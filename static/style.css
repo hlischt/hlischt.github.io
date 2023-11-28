@@ -1,0 +1,251 @@
+body {
+  font-family: Fira Sans, Inter, sans-serif;
+  font-size: 1.15em;
+  margin: 0;
+  background: #222;
+}
+
+header {
+    background-color: #222;
+    color: #ddd;
+    margin: 0;
+    padding-top: 0.5em;
+}
+
+header nav ul {
+    padding: 0;
+    margin: auto;
+    max-width: 74ch;
+    display: flex;
+    list-style: none;
+    justify-content: left;
+    
+  }
+  header nav ul li {
+    flex: 0;
+    text-align: center;
+    margin-left: 0.5em;
+    margin-right: 0.5em;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+    padding-top: 0.25em;
+    border-radius: 0.5em 0.5em 0 0;
+    transition: background-color 0.1s;
+    
+  }
+  header nav ul li:hover {
+    background-color: #333;
+  }
+  header nav ul li a {
+    text-decoration: none;
+    color: #ddd;
+  }
+  header p {
+    display: none;
+  }
+
+
+/* Hide almost everything from navbar if body is too narrow */
+@media (max-width: 25em) {
+  header ul li:nth-child(n+2) {
+    display: none;
+  }
+}
+
+header p {
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+  margin-bottom: 0.5em;
+  text-align: center;
+}
+
+main {
+  margin: auto;
+  max-width: 72ch;
+  background-color: #333;
+  color: #ddd;
+  padding: 0.5em;
+}
+
+article {
+  max-width: 68ch;
+  margin:auto;
+}
+
+h1.title {
+  text-align: center;
+  font-size: 2.2em;
+  margin-bottom: 0.5em;
+  margin-top: 0.5em;
+}
+
+h2, h3 {
+  margin-left: -0.8ch;
+  margin-top: 0;
+  margin-bottom: 0.65em;
+}
+
+article > section {
+  margin-top: 4em;
+  margin-left: 1ch;
+  margin-right: 1ch;
+}
+
+hgroup p {
+  text-align: center;
+  font-size: 1rem;
+  margin-top: 0em;
+  margin-bottom: 1em;
+}
+
+p.date-published::before {
+  content: "📅 "
+}
+
+p.date-edited::before {
+  content: "📝 "
+}
+
+hgroup {
+  margin-bottom: 3em;
+}
+
+p, li {
+  font-weight: 300;
+  line-height: 1.5;
+}
+
+p {
+  margin: 0 0 1.2em 0;
+  overflow-wrap: break-word;
+}
+
+a {
+  color: rgb(200, 130, 20);
+}
+
+a:visited {
+  color: rgb(200, 140, 150);
+}
+
+
+code, pre {
+  font-weight: normal;
+  background: #222;
+}
+
+img {
+  max-width: 90%;
+  margin-left: auto;
+  margin-right: auto;
+  margin-bottom: 1em;
+  display: block;
+}
+
+figure {
+  margin: 1em;
+}
+
+figure img {
+  margin-bottom: 0.5em;
+}
+
+figcaption {
+  text-align: center;
+  color: #aaa;
+  font-size: 0.85em;
+}
+
+pre {
+  font-family: monospace;
+  overflow: scroll;
+  font-size: 0.86em;
+  padding-left: 0.5em;
+  padding-right: 0.5em;
+  padding-top: 0.35em;
+  padding-bottom: 0.35em;
+}
+
+#table-of-contents {
+  padding: 1em;
+  background-color: #222;
+  margin-left: 1em;
+  margin-right: 1em;
+  margin-bottom: 1em;
+}
+
+#table-of-contents h2 {
+  text-align: center;
+  font-size: 1.3em;
+}
+
+/* Floating elements when there's space */
+@media (min-width: 66ch) {
+  #table-of-contents {
+    max-width: 40%;
+    float: left;
+  }
+  .floating { /* imgs and figures */
+    max-width: 40%;
+    float: right;
+  }
+  img.floating {
+    margin-right: 0.5em;
+    margin-left: 1em;
+  }
+}
+
+abbr[title] {
+  cursor: help;
+}
+
+/* Is there a magical size for mobile screens? */
+@media screen and (max-width: 60em) {
+  abbr[title]::after {
+    content: " (" attr(title) ")";
+    text-decoration: none;
+  }
+}
+
+dl {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    align-items: center;
+    word-break: break-word;
+}
+
+dt {
+    grid-column-start: 1;
+    padding-left: 0.4em;
+    padding-right: 0.3em;
+    padding-top: 0.4em;
+    padding-bottom: 0.4em;
+    text-align: center;
+}
+
+dd {
+    grid-column-start: 2;
+    margin-left: 0em;
+    padding-left: 0.4em;
+    padding-top: 0.4em;
+    padding-bottom: 0.4em;
+    background: #222;
+    margin-bottom: 0.5em;
+}
+
+/* Wrap dates in <time> tags, and this makes the date show up vertically */
+#writings + dl dt {
+    display: grid;
+    grid-auto-rows: minmax(min-content, max-content);
+    grid-template-columns: auto 1fr;
+    align-items: center;
+}
+
+#writings + dl dt time {
+    transform: rotate(180deg);
+    writing-mode: vertical-lr;
+    text-align: center;
+    margin-right: 0.40em;
+    font-size: 0.7em;
+    font-family: sans-serif;
+}

@@ -1,0 +1,203 @@
+<?xml version='1.0' encoding='utf-8'?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>[ɬiʃt]</title>
+  <id>https://hlischt.com/</id>
+  <updated>2023-11-28T07:36:16Z</updated>
+  <link rel="self" href="https://hlischt.com/feed.xml"/>
+  <author>
+    <name>hlischt</name>
+  </author>
+  <entry>
+    <title>Signify and Minisign are not the same thing</title>
+    <id>https://hlischt.com/signify-minisign</id>
+    <link href="https://hlischt.com/signify-minisign"/>
+    <updated>2023-11-28T00:31:00-06:00</updated>
+    <published>2023-11-28T00:31:00-06:00</published>
+    <content type="html">&lt;article&gt;
+&lt;nav id="table-of-contents" role="doc-toc"&gt;
+&lt;h2&gt;Table of Contents&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="#generation"&gt;Generation&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#signature"&gt;Signature&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#verification"&gt;Verification&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#misc"&gt;Miscellaneous&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#which"&gt;Which one should I use?&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href="#links"&gt;See also&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/nav&gt;
+&lt;p&gt;
+As I read about cryptographic tools, such as &lt;a href="https://www.gnupg.org/"&gt;GnuPG&lt;/a&gt; and &lt;a href="https://age-encryption.org/"&gt;age&lt;/a&gt;, there was one that people recommended for signing files, or rather, a couple of them: &lt;a href="https://www.openbsd.org/papers/bsdcan-signify.html"&gt;signify&lt;/a&gt; and &lt;a href="https://jedisct1.github.io/minisign/"&gt;minisign&lt;/a&gt;.
+&lt;/p&gt;
+&lt;p&gt;
+Now, I’m not a strong user of these tools, as I don’t regularly release software or any other sort of files that must be verified for potential tampering, but I was still curious about this use case, and most of the recommendations I’ve read treated both tools as somewhat interchangeable: “just use signify or minisign, whatever you want”. They are nigh identical tools, based around the same principle and with similar user interfaces, but as it turns out, they’re not compatible with each other.
+&lt;/p&gt;
+&lt;p&gt;
+This write-up serves as a possible source of clarification for any confused user searching why they can’t sign files with keys made in the other program. I know I was one of them.
+&lt;/p&gt;
+&lt;p&gt;
+Keep in mind that I am using Debian Testing, so the packages might be different from the releases you’re using. In fact, all mentions of the &lt;code&gt;signify&lt;/code&gt; command refer to &lt;code&gt;signify-openbsd&lt;/code&gt; due to a name clash with an email signature generator.
+&lt;/p&gt;
+&lt;section&gt;
+&lt;h2 id="generation"&gt;Generation&lt;/h2&gt;
+&lt;p&gt;
+Before signing your files, you need to create a key pair; the secret key creates the signature, and the public key verifies said signature. Skimming the man pages, we can see how the key creation commands are not the same:
+&lt;/p&gt;
+&lt;pre class="example"&gt;
+signify  -G [-n] [-c comment] -p pubkey -s seckey
+
+minisign -G [-p pubkey_file] [-s seckey_file] [-W]
+&lt;/pre&gt;
+&lt;p&gt;
+Signify’s &lt;code&gt;-c&lt;/code&gt; option defines a comment for your key (the “untrusted comment” line) at generation-time, while minisign does this at signature-time. The &lt;code&gt;-n&lt;/code&gt; and &lt;code&gt;-W&lt;/code&gt; flags do the same: avoid using a password to encrypt the key file.
+&lt;/p&gt;
+&lt;p&gt;
+Notice how &lt;code&gt;-p&lt;/code&gt; and &lt;code&gt;-s&lt;/code&gt; are optional in minisign. Unlike signify, which needs specific paths to store the key pair, minisign stores the secret key by default on &lt;code&gt;~/.minisign/minisign.key&lt;/code&gt;. The public key is stored as &lt;code&gt;minisign.pub&lt;/code&gt; in the current directory.
+&lt;/p&gt;
+&lt;/section&gt;
+&lt;section&gt;
+&lt;h2 id="signature"&gt;Signature&lt;/h2&gt;
+&lt;pre class="example"&gt;
+signify  -S [-enz] [-x sigfile] -s seckey -m message
+
+minisign -S [-H] [-x sig_file] [-s seckey_file] [-c untrusted_comment]
+            [-t trusted_comment] -m file [file ...]
+&lt;/pre&gt;
+&lt;p&gt;
+Here we can see how minisign not only lets you assign an untrusted comment when signing a file with &lt;code&gt;-c&lt;/code&gt;, but it also lets you assign a custom trusted comment with &lt;code&gt;t&lt;/code&gt;, which no one can modify without invalidating the signature. Conversely, while missing signature-time comments, signify is able to embed the message in the signature file it creates by using the &lt;code&gt;-e&lt;/code&gt; flag, as well as embed the signature in the header of a gzip file with the &lt;code&gt;-z&lt;/code&gt; flag. I have no idea what &lt;code&gt;-H&lt;/code&gt; (“Requires the input to be prehashed”) does, and apparently it will be removed in the future anyway.
+&lt;/p&gt;
+&lt;p&gt;
+Let’s do a test:
+&lt;/p&gt;
+&lt;div&gt;
+&lt;pre class="src src-bash"&gt;mkdir -p signikeys &amp;amp;&amp;amp; signify  -G -p signikeys/key.pub -s signikeys/key.sec -n
+mkdir -p minikeys  &amp;amp;&amp;amp; minisign -G -p minikeys/key.pub  -s minikeys/key.sec  -W
+echo 'This is a test' &amp;gt; test.txt
+signify  -S -s signikeys/key.sec -m test.txt -x test.txt.signify
+minisign -S -s minikeys/key.sec  -m test.txt -x test.txt.minisign
+&lt;/pre&gt;
+&lt;/div&gt;
+&lt;p&gt;
+There’s no output from the signature operation, so everything’s normal. Now let’s sign with the opposite keys:
+&lt;/p&gt;
+&lt;pre class="example"&gt;
+signify -S -s minikeys/key.sec -m test.txt -x test.txt.signify-minikeys
+# signify-openbsd: unable to parse minikeys/key.sec
+minisign -S -s signikeys/key.sec -m test.txt -x test.txt.minisign-signikeys
+# base64 conversion failed - was an actual secret key given?
+&lt;/pre&gt;
+&lt;p&gt;
+Each program can’t read the other’s keys. If you look at the secret keys, you can see the minisign one is slightly longer. They’re fundamentally not the same, and this is true even if we use a password for either of them or both.
+&lt;/p&gt;
+&lt;pre class="example"&gt;
+$ cat signikeys/key.sec
+untrusted comment: signify secret key
+RWRCSwAAAABSXFgEHTEe8MaWRd2VhnhaiNX7SEKnRX1HpKzOd/7Rr2AGt6Ti+scwJECiC3Zo+Vp/mMmhpHMTbBT+qt6F1cUvmEJD5/DVgS1rOr3sM1J4I+zsdXN7tja2c4CT68uyvvg=
+$ cat minikeys/key.sec 
+untrusted comment: minisign encrypted secret key
+RWQAAEIyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA7WDMerTVfXdRVEOpd6Ejq95Jp8DBvH0La1KvAMoS8p/qOP3ujDeXNp42ES4vNFHgvey9vEkdTMfio9GOlS3h5b6o8HkU+rwbAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+&lt;/pre&gt;
+&lt;p&gt;
+It goes without saying that you should not use these keys, ever. They are not secret anymore.
+&lt;/p&gt;
+&lt;/section&gt;
+&lt;section&gt;
+&lt;h2 id="verification"&gt;Verification&lt;/h2&gt;
+&lt;pre class="example"&gt;
+signify  -V [-eqz] [-p pubkey] [-t keytype] [-x sigfile] -m message
+
+minisign -V [-x sig_file] [-p pubkey_file | -P pubkey] [-o] [-q] -m file
+&lt;/pre&gt;
+&lt;p&gt;
+The verification stage is straightforward and pretty much the same in both programs: &lt;code&gt;-V&lt;/code&gt; sets the verify mode, &lt;code&gt;-x&lt;/code&gt; is the signature file generated in the previous step, &lt;code&gt;-p&lt;/code&gt; is the public key file, and &lt;code&gt;-m&lt;/code&gt; is the message, i.e. the file whose integrity we’re checking. We have a &lt;code&gt;-q&lt;/code&gt; flag for suppressing output, as well.
+&lt;/p&gt;
+&lt;p&gt;
+As for signify-exclusive options, we have &lt;code&gt;-e&lt;/code&gt; to verify signatures with an embeded message (as in &lt;code&gt;signify -e -x signature_with_embed -p key.pub -m new_file&lt;/code&gt;, which will create new_file with the contents of the original file.), &lt;code&gt;-z&lt;/code&gt; as the same thing for signed gzip files, &lt;code&gt;-t&lt;/code&gt; for deducing a key type or something (don’t ask me what this does, it matches a key on /etc/signify/*-keytype.pub, and I don’t have that directory since I use the Debian version). For minisign, &lt;code&gt;-o&lt;/code&gt; prints the message file to the standard output, and &lt;code&gt;-P&lt;/code&gt; allows you to use the base64 string representation of a key instead of a file, as in &lt;code&gt;minisign -V -P RWRHpKzOd/7Rr5hCQ+fw1YEtazq97DNSeCPs7HVze7Y2tnOAk+vLsr74 -m test.txt -x test.txt.minisign&lt;/code&gt;.
+&lt;/p&gt;
+&lt;p&gt;
+Well, we may not be able to sign files with keys generated by another program, but what about verification?
+&lt;/p&gt;
+&lt;pre class="example"&gt;
+$ signify-openbsd -V -x test.txt.signify -p signikeys/key.pub -m test.txt
+Signature Verified
+$ minisign -V -x test.txt.minisign -p minikeys/key.pub -m test.txt
+Signature and comment signature verified
+Trusted comment: timestamp:1699600567	file:test.txt	hashed
+$ signify-openbsd -V -x test.txt.minisign -p minikeys/key.pub -m test.txt
+signify-openbsd: unsupported file test.txt.minisign
+$ minisign -V -x test.txt.signify -p signikeys/key.pub -m test.txt
+Trusted comment not present
+&lt;/pre&gt;
+&lt;p&gt;
+So, not only the secret key structure is different, but also the signatures they generate:
+&lt;/p&gt;
+&lt;pre class="example"&gt;
+$ cat test.txt.signify
+untrusted comment: verify with key.pub
+RWRHpKzOd/7Rryg60iRfonpDvuFq40qPJn9XiEsuHh2kWmXwyZNJ+/YhB/7KgFuLN6pXdsXBJj+7AJA1kkWkwOPJG8fN821ZJAs=
+$ cat test.txt.minisign
+untrusted comment: signature from minisign secret key
+RUTtYMx6tNV9dwXgHep+70+uZy4mDwEMmdNwapL4/Nlpt3i8gwI1VG++3fjm/ImPAOxBft7FCGyWoD7nOJvcHJYZJx3nZwCcPw8=
+trusted comment: timestamp:1699600567	file:test.txt	hashed
+3/rMchyZllQfWMx0OU8MSfxSCBYXydlhG9ZlBrRIJhfRsAMkrazWjJDDdO7AtKx6q++y5R1w2FxJuhOj9P7hAQ==
+&lt;/pre&gt;
+&lt;p&gt;
+As hinted at in the signature section, we have a trusted comment on the minisign signature, a comment that no one can tamper with as it would invalidate the signature. Meanwhile, the signify signature only has an untrusted comment, which can be modified freely. In other words, they generate files with a different structure, even if they look similar to each other.
+&lt;/p&gt;
+&lt;/section&gt;
+&lt;section&gt;
+&lt;h2 id="misc"&gt;Miscellaneous&lt;/h2&gt;
+&lt;p&gt;
+Signify can verify a list of SHA-256 checksums and automatically check the integrity of each file on the list with the &lt;code&gt;-C&lt;/code&gt; option. However, you must use the BSD version of &lt;code&gt;sha256&lt;/code&gt; to generate the checksum or use GNU’s &lt;code&gt;sha256sum&lt;/code&gt; with the &lt;code&gt;--tag&lt;/code&gt; option.
+&lt;/p&gt;
+&lt;p&gt;
+Minisign uses the &lt;code&gt;-C&lt;/code&gt; option to change the password for a secret key, as well as to remove it with the &lt;code&gt;-W&lt;/code&gt; flag. It also has a &lt;code&gt;-R&lt;/code&gt; option, which recreates the public key in case you only have the secret key, for example, if you have it in the &lt;code&gt;~/.minisign&lt;/code&gt; directory and don’t remember where you stored the public key.
+&lt;/p&gt;
+&lt;/section&gt;
+&lt;section&gt;
+&lt;h2 id="which"&gt;Which one should I use?&lt;/h2&gt;
+&lt;p&gt;
+Hard to say. They solve the same problem in almost the same way, but implementation differences make them unable to serve as drop-in replacements for each other.
+&lt;/p&gt;
+&lt;section&gt;
+&lt;h3&gt;Use signify if…&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;…you use OpenBSD.&lt;/li&gt;
+&lt;li&gt;…your distro uses signify.&lt;/li&gt;
+&lt;li&gt;…you want to create files with an embedded signature.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/section&gt;
+&lt;section&gt;
+&lt;h3&gt;Use minisign if…&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;…you want to use trusted comments.&lt;/li&gt;
+&lt;li&gt;…you use Windows or WebAssembly.&lt;/li&gt;
+&lt;li&gt;…you prefer to leverage your crypto to &lt;a href="https://doc.libsodium.org/"&gt;libsodium&lt;/a&gt;.&lt;/li&gt;
+&lt;li&gt;…you want to compile using zig.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/section&gt;
+&lt;section&gt;
+&lt;h3&gt;Use either if…&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;…you want to verify files signed with one or another.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/section&gt;
+&lt;section&gt;
+&lt;h3&gt;Use none if…&lt;/h3&gt;
+&lt;ul&gt;
+&lt;li&gt;…you still believe PGP is the way to go.&lt;/li&gt;
+&lt;li&gt;…you don’t know what this whole “digital signature” mumbo jumbo is all about.&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;
+To be fair, me neither. I don’t know a thing about crypto, so don’t take my opinions too seriously.
+&lt;/p&gt;
+&lt;/section&gt;
+&lt;/section&gt;
+&lt;section&gt;
+&lt;h2 id="links"&gt;See also&lt;/h2&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;a href="https://github.com/aperezdc/signify/issues/20"&gt;Differences to minisign · Issue #20 · aperezdc/signify · GitHub&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/section&gt;
+&lt;/article&gt;</content>
+  </entry>
+</feed>
